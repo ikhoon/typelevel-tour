@@ -7,6 +7,13 @@ import org.scalatest.FunSuite
 import org.scalatest.prop.Checkers
 
 class ExercisesSuite extends FunSuite with Checkers {
+  test("Ex1 should pass tuple") {
+    import Ex1._
+
+    val json = json"""[ -122.422003528252475, 37.808480096967251, 0.0 ]"""
+
+    println(decodeCoord.decodeJson(json))
+  }
   test("Ex1 should pass") {
     import Ex1._
 

@@ -15,7 +15,11 @@ object Ex1 {
    * Write a decoder for this polygon type that works with the city lots
    * examples.
    */
-  def decodePolygon: Decoder[Polygon] = ???
+  def decodePolygon: Decoder[Polygon] =
+    for {
+      coordinates <- Decoder[List[List[Coord]]].prepare(_.downField("coordinates"))
+    } yield Polygon(coordinates)
+
 }
 
 object Ex2 {
@@ -32,7 +36,13 @@ object Ex2 {
    * examples, and doesn't allow any fields except `type` and `coordinates`.
    * For extra credit, ensure that `type` is `Polygon`.
    */
-  def decodePolygon: Decoder[Polygon] = ???
+  def decodePolygon: Decoder[Polygon] = Decoder.fromState(
+    for {
+      poly <- Decoder.state.decodeField["Polygon"]("type")
+      coordinates <- Decoder.state.decodeField[List[List[Coord]]]("coordinates")
+      _ <- Decoder.state.requireEmpty
+    } yield Polygon(coordinates)
+  )
 }
 
 object Ex3 {
