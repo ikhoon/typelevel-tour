@@ -59,6 +59,14 @@ class ExercisesSuite extends FunSuite with Checkers {
     assert(Decoder.decodeList(Ex3.decodeGeometry).decodeJson(combined).isRight)
   }
 
+  test("Ex3_1 should pass") {
+    import Ex3_1._
+
+    val combined = Json.fromValues(List(CityLots.samplePolygon, CityLots.sampleMultiPolygon))
+
+    assert(Decoder.decodeList(Ex3.decodeGeometry).decodeJson(combined).isRight)
+  }
+
   test("Ex4 should pass") {
     import Ex4._
 

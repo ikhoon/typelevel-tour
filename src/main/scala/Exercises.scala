@@ -59,11 +59,48 @@ object Ex3 {
       case (x, y, _) => Coord(x, y)
     }
 
+  def decodePolygon: Decoder[Geometry] = Decoder.fromState(
+    for {
+      poly <- Decoder.state.decodeField["Polygon"]("type")
+        coordinates <- Decoder.state.decodeField[List[List[Coord]]]("coordinates")
+      _ <- Decoder.state.requireEmpty
+    } yield Polygon(coordinates)
+  )
+  def decodeMultiPolyGon: Decoder[Geometry] = Decoder.fromState(
+    for {
+      poly <- Decoder.state.decodeField["MultiPolygon"] ("type")
+        coordinates <- Decoder.state.decodeField[List[List[List[Coord]]]]("coordinates")
+      _ <- Decoder.state.requireEmpty
+    } yield MultiPolygon(coordinates)
+  )
+
   /**
    * Write a decoder for this geometry type that works with the city lots
    * examples.
    */
-  def decodeGeometry: Decoder[Geometry] = ???
+  def decodeGeometry: Decoder[Geometry] = decodePolygon.or(decodeMultiPolyGon)
+}
+object Ex3_1 {
+  import io.circe.generic.extras._
+  implicit val config = Configuration.default.withDiscriminator("type")
+
+  case class Coord(x: Double, y: Double)
+
+  sealed trait Geometry
+  case class Polygon(coordinates: List[List[Coord]]) extends Geometry
+  case class MultiPolygon(coordinates: List[List[List[Coord]]]) extends Geometry
+
+  implicit val decodeCoord: Decoder[Coord] =
+    Decoder[(Double, Double, Double)].map {
+      case (x, y, _) => Coord(x, y)
+    }
+
+
+  /**
+    * Write a decoder for this geometry type that works with the city lots
+    * examples.
+    */
+  def decodeGeometry: Decoder[Geometry] = io.circe.generic.semiauto.deriveDecoder[Geometry]
 }
 
 object Ex4 {
@@ -76,17 +113,23 @@ object Ex4 {
   import io.circe.refined._
   import io.circe.shapes._
 
+  implicit val config = Configuration.default.withDiscriminator("type")
+
   case class Coord(x: Double, y: Double)
 
   sealed trait Geometry
   case class Polygon(coordinates: List[List[Coord]]) extends Geometry
   case class MultiPolygon(coordinates: List[List[List[Coord]]]) extends Geometry
 
+  type LotPredicate = MatchesRegex["\\d\\d\\d\\dT?\\d\\d\\d[A-F]?"]
+
   /**
    * Expand this record to include the `MAPBLKLOT` and `BLKLOT` fields and
    * enforce their length and digitness.
    */
-  type Rec = HNil
+  type Rec =
+    FieldType["MAPBLKLOT", Refined[String, LotPredicate]] ::
+    FieldType["BLKLOT", Refined[String, LotPredicate]] :: HNil
 
   case class Lot(props: Rec, geo: Option[Geometry])
 
@@ -95,11 +138,19 @@ object Ex4 {
       case (x, y, _) => Coord(x, y)
     }
 
+  implicit val decodeGeometry: Decoder[Geometry] =
+    io.circe.generic.extras.semiauto.deriveDecoder[Geometry]
+
   /**
    * Write a decoder for this lot type that works with the city lots
    * examples, confirming that the type is always `Feature`.
    */
-  def decodeLot: Decoder[Lot] = ???
+  def decodeLot: Decoder[Lot] = (
+    Decoder["Feature"].prepare(_.downField("type")),
+    Decoder[Rec].prepare(_.downField("properties")),
+    Decoder[Option[Geometry]].prepare(_.downField("geometry"))
+  ).mapN((_, p, g) => Lot(p, g))
+
 }
 
 object Ex5 {
